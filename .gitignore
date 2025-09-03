@@ -1,0 +1,4 @@
+.vscode
+*.txt
+defines.php
+logs

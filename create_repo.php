@@ -1,33 +1,76 @@
 <?php
-require_once($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_before.php');
-require_once 'github_api.php';
+header('Content-Type: application/json');
 
 // Получаем данные
-$postData = $_POST;
-$groupId = json_decode($postData['PLACEMENT_OPTIONS'], true)['GROUP_ID'] ?? 0;
+$input = json_decode(file_get_contents('php://input'), true);
 
-if ($groupId && isset($_POST['repo_name'])) {
-    // Получаем настройки для группы
-    $optionKey = "github_settings_" . $groupId;
-    $settingsJson = COption::GetOptionString("main", $optionKey, "");
-    $settings = $settingsJson ? json_decode($settingsJson, true) : [];
-    
-    if (empty($settings)) {
-        echo json_encode(['success' => false, 'message' => 'Настройки не найдены']);
-        exit;
-    }
+$repoName = $input['repo_name'] ?? '';
+$repoDescription = $input['repo_description'] ?? '';
+$apiKey = $input['api_key'] ?? '';
+$organization = $input['organization'] ?? '';
+
+if (!$repoName || !$apiKey || !$organization) {
+    echo json_encode(['success' => false, 'message' => 'Не хватает данных']);
+    exit;
+}
+
+$result = createRepository($apiKey, $organization, $repoName, $repoDescription);
+echo json_encode($result);
+
+function createRepository($apiKey, $organization, $repoName, $repoDescription = '') {
+    // Данные для создания репозитория
+    $repoData = json_encode([
+        'name' => $repoName,
+        'description' => $repoDescription,
+        'private' => false
+    ]);
     
     // Создаем репозиторий
-    $result = createRepository(
-        $settings, 
-        $_POST['repo_name'], 
-        $_POST['repo_description'] ?? ''
-    );
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, "https://api.github.com/orgs/$organization/repos");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $repoData);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: token ' . $apiKey,
+        'User-Agent: Bitrix24-GitHub-App',
+        'Content-Type: application/json'
+    ]);
     
-    header('Content-Type: application/json');
-    echo json_encode($result);
-} else {
-    header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'Не указано имя репозитория']);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($httpCode === 201) {
+        $repoInfo = json_decode($response, true);
+        
+        return [
+            'success' => true, 
+            'url' => $repoInfo['html_url'],
+            'repo_name' => $repoInfo['name']
+        ];
+    } else {
+        $error = json_decode($response, true);
+        return [
+            'success' => false, 
+            'message' => $error['message'] ?? 'Ошибка создания репозитория'
+        ];
+    }
+}
+
+function addCollaborator($apiKey, $orgName, $repoName, $username) {
+    if (empty($username)) return;
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, "https://api.github.com/repos/$orgName/$repoName/collaborators/$username");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: token ' . $apiKey,
+        'User-Agent: Bitrix24-GitHub-App'
+    ]);
+    
+    curl_exec($ch);
+    curl_close($ch);
 }
 ?>
