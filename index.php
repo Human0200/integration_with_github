@@ -120,6 +120,26 @@ if ($placement === 'SONET_GROUP_DETAIL_TAB' && isset($placementOptions['GROUP_ID
                     <ul id="membersListContent"></ul>
                 </div>
             </div>
+            
+            <!-- GitHub Project -->
+            <div id="githubProjectSection" class="project-board-section" style="display: none;">
+                <h3>GitHub Project</h3>
+                <div id="currentProject" style="display: none;">
+                    <p>GitHub Project: <a href="#" id="projectLink" target="_blank"></a></p>
+                </div>
+                
+                <div id="createProjectForm">
+                    <div class="form-group">
+                        <label>Название проекта:</label>
+                        <input type="text" id="github_project_name" class="form-control" placeholder="Название проекта на GitHub">
+                    </div>
+                    <div class="form-group">
+                        <label>Описание проекта:</label>
+                        <textarea id="github_project_description" class="form-control" placeholder="Описание проекта"></textarea>
+                    </div>
+                    <button type="button" id="createGithubProjectBtn" class="btn btn-success">Создать GitHub Project</button>
+                </div>
+            </div>
         </div>
         
         <!-- Интерфейс для задачи -->

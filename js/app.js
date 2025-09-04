@@ -181,6 +181,75 @@ BX24.ready(function() {
         });
     }
     
+    function createGithubProject() {
+        const projectName = document.getElementById('github_project_name').value;
+        const projectDescription = document.getElementById('github_project_description').value;
+        
+        if (!projectName) {
+            showResult('Укажите название проекта', 'error');
+            return;
+        }
+        
+        // Получаем данные проекта и глобальные настройки
+        const optionKey = `github_project_${contextId}`;
+        BX24.callMethod('app.option.get', {}, function(result) {
+            if (result.error()) {
+                showResult('Ошибка получения настроек: ' + result.error(), 'error');
+                return;
+            }
+            
+            const options = result.data();
+            const projectData = options[optionKey] ? JSON.parse(options[optionKey]) : {};
+            const apiKey = options.github_api_key;
+            const organization = options.github_organization;
+            
+            if (!apiKey || !organization || !projectData.repo_name) {
+                showResult('Сначала настройте глобальные настройки и создайте репозиторий', 'error');
+                return;
+            }
+            
+            // Создаем GitHub Project
+            fetch('create_github_project.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    api_key: apiKey,
+                    organization: organization,
+                    repo_name: projectData.repo_name,
+                    project_name: projectName,
+                    project_description: projectDescription,
+                    group_id: contextId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Сохраняем данные проекта
+                    projectData.github_project_url = data.project_url;
+                    projectData.github_project_name = projectName;
+                    projectData.github_project_id = data.project_id;
+                    
+                    const newOptions = {};
+                    newOptions[optionKey] = JSON.stringify(projectData);
+                    
+                    BX24.callMethod('app.option.set', { options: newOptions }, function(result) {
+                        if (result.error()) {
+                            showResult('Проект создан, но ошибка сохранения: ' + result.error(), 'error');
+                        } else {
+                            showResult('GitHub Project создан успешно!', 'success');
+                            loadProjectRepo(); // Перезагружаем интерфейс
+                        }
+                    });
+                } else {
+                    showResult('Ошибка создания проекта: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showResult('Ошибка сети: ' + error.message, 'error');
+            });
+        });
+    }
+    
     function selectRepository() {
         const repoUrl = document.getElementById('existing_repo_url').value;
         
