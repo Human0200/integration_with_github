@@ -29,8 +29,28 @@ $result2 = CRest::call(
 		'TITLE' => 'GitHub'
 	]
 );
+$result3 = CRest::call(
+    'user.userfield.add',
+    [
+        'fields' => [
+            'FIELD_NAME' => 'UF_GITHUB_PROFILE',
+            'USER_TYPE_ID' => 'string',
+            'XML_ID' => 'UF_GITHUB_PROFILE',
+            'SORT' => 100,
+            'MULTIPLE' => 'N',
+            'MANDATORY' => 'N',
+            'SHOW_FILTER' => 'Y',
+            'SHOW_IN_LIST' => 'Y',
+            'EDIT_IN_LIST' => 'Y',
+            'EDIT_FORM_LABEL' => [
+                'ru' => 'GitHub Профиль',
+				'en' => 'GitHub Profile'
+            ],
+        ]
+    ]
+);
 CRest::setLog(['task_tab' => $result2], 'installation');
-
+file_put_contents(__DIR__.'/log.txt', print_r($result3, true), FILE_APPEND);
 if($install_result['rest_only'] === false):?>
 <head>
 	<script src="//api.bitrix24.com/api/v1/"></script>
@@ -46,7 +66,8 @@ if($install_result['rest_only'] === false):?>
 	<?if($install_result['install'] == true):?>
 		GitHub Integration установлена успешно!<br>
 		Группы: <?= $result1['result'] ? '✅' : '❌' ?><br>
-		Задачи: <?= $result2['result'] ? '✅' : '❌' ?>
+		Задачи: <?= $result2['result'] ? '✅' : '❌' ?></br>
+		Профили: <?= $result3['result'] ? '✅' : '❌' ?>
 	<?else:?>
 		Ошибка установки
 	<?endif;?>

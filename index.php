@@ -54,6 +54,11 @@ if ($placement === 'SONET_GROUP_DETAIL_TAB' && isset($placementOptions['GROUP_ID
                     <input type="text" id="global_organization" class="form-control">
                 </div>
                 
+                <div class="form-group">
+                    <label>Участники по умолчанию (через запятую):</label>
+                    <input type="text" id="global_members" class="form-control">
+                </div>
+                
                 <button type="submit" class="btn btn-primary">Сохранить глобальные настройки</button>
             </form>
         </div>
@@ -92,6 +97,16 @@ if ($placement === 'SONET_GROUP_DETAIL_TAB' && isset($placementOptions['GROUP_ID
                         <label>Описание:</label>
                         <textarea id="new_repo_description" class="form-control"></textarea>
                     </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="new_repo_private" checked> Приватный репозиторий
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="new_repo_readme" checked> Создать README.md
+                        </label>
+                    </div>
                     <button type="button" id="createRepoBtn" class="btn btn-success">Создать репозиторий</button>
                 </div>
                 
@@ -120,44 +135,114 @@ if ($placement === 'SONET_GROUP_DETAIL_TAB' && isset($placementOptions['GROUP_ID
                     <ul id="membersListContent"></ul>
                 </div>
             </div>
-            
-            <!-- GitHub Project -->
-            <div id="githubProjectSection" class="project-board-section" style="display: none;">
-                <h3>GitHub Project</h3>
-                <div id="currentProject" style="display: none;">
-                    <p>GitHub Project: <a href="#" id="projectLink" target="_blank"></a></p>
-                </div>
-                
-                <div id="createProjectForm">
-                    <div class="form-group">
-                        <label>Название проекта:</label>
-                        <input type="text" id="github_project_name" class="form-control" placeholder="Название проекта на GitHub">
-                    </div>
-                    <div class="form-group">
-                        <label>Описание проекта:</label>
-                        <textarea id="github_project_description" class="form-control" placeholder="Описание проекта"></textarea>
-                    </div>
-                    <button type="button" id="createGithubProjectBtn" class="btn btn-success">Создать GitHub Project</button>
-                </div>
+        </div>
+        
+<!-- Интерфейс для задачи -->
+<div id="taskInterface" class="task-section" style="display: none;">
+    <div id="taskRepoSetup" style="display: none;">
+        <h3>Настройка репозитория для задачи</h3>
+        <div class="form-group">
+            <label>
+                <input type="radio" name="taskRepoOption" value="project" checked> Использовать репозиторий проекта
+            </label>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="radio" name="taskRepoOption" value="new"> Создать новый репозиторий
+            </label>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="radio" name="taskRepoOption" value="select"> Выбрать существующий репозиторий
+            </label>
+        </div>
+        
+        <!-- Использовать репозиторий проекта -->
+        <div id="useProjectRepo" class="form-section">
+            <h4>Репозиторий проекта</h4>
+            <p>Репозиторий: <a href="#" id="projectRepoLink" target="_blank"></a></p>
+            <button type="button" id="confirmProjectRepo" class="btn btn-primary">Использовать этот репозиторий</button>
+        </div>
+        
+        <!-- Создать новый репозиторий -->
+        <div id="createTaskRepo" class="form-section" style="display: none;">
+            <h4>Создать новый репозиторий</h4>
+            <div class="form-group">
+                <label>Название репозитория:</label>
+                <input type="text" id="task_repo_name" class="form-control" placeholder="task-286-feature">
+            </div>
+            <div class="form-group">
+                <label>Описание:</label>
+                <textarea id="task_repo_description" class="form-control" placeholder="Репозиторий для задачи #286"></textarea>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="task_repo_private" checked> Приватный репозиторий
+                </label>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="task_repo_readme" checked> Создать README.md
+                </label>
+            </div>
+            <div class="form-group">
+                <label>Участники (через запятую):</label>
+                <input type="text" id="task_repo_members" class="form-control" placeholder="user1,user2,user3">
+            </div>
+            <button type="button" id="createTaskRepoBtn" class="btn btn-success">Создать репозиторий</button>
+        </div>
+        
+        <!-- Выбрать существующий репозиторий -->
+        <div id="selectTaskRepo" class="form-section" style="display: none;">
+            <h4>Выбрать существующий репозиторий</h4>
+            <div class="form-group">
+                <label>URL репозитория:</label>
+                <input type="url" id="existing_task_repo_url" class="form-control" placeholder="https://github.com/org/repo">
+            </div>
+            <div class="form-group">
+                <label>Участники (через запятую):</label>
+                <input type="text" id="existing_task_repo_members" class="form-control" placeholder="user1,user2,user3">
+            </div>
+            <button type="button" id="selectTaskRepoBtn" class="btn btn-primary">Привязать репозиторий</button>
+        </div>
+    </div>
+    
+    <div id="taskRepo" style="display: none;">
+        <h3>Репозиторий задачи</h3>
+        <p>Репозиторий: <a href="#" id="taskRepoLink" target="_blank"></a></p>
+        
+        <div class="form-group">
+            <label>Связанная ветка/issue:</label>
+            <input type="text" id="task_branch" class="form-control" placeholder="feature/task-286">
+            <div class="branch-actions" style="margin-top: 10px;">
+                <button type="button" id="createBranchBtn" class="btn btn-sm btn-success">Создать ветку</button>
+                <button type="button" id="openBranchBtn" class="btn btn-sm btn-primary" style="display: none;">Открыть ветку в GitHub</button>
             </div>
         </div>
         
-        <!-- Интерфейс для задачи -->
-        <div id="taskInterface" class="task-section" style="display: none;">
-            <div id="taskRepo" style="display: none;">
-                <p>Репозиторий: <a href="#" id="taskRepoLink" target="_blank"></a></p>
-                <div class="form-group">
-                    <label>Связанная ветка/issue:</label>
-                    <input type="text" id="task_branch" class="form-control" placeholder="feature/task-286">
-                </div>
-                <button type="button" id="updateTaskLinkBtn" class="btn btn-primary">Обновить связь</button>
+        <div class="members-section">
+            <h4>Участники репозитория</h4>
+            <div class="form-group">
+                <label>GitHub пользователи (через запятую):</label>
+                <input type="text" id="task_repo_members_list" class="form-control" placeholder="user1,user2,user3">
             </div>
+            <button type="button" id="updateTaskMembersBtn" class="btn btn-primary">Обновить участников</button>
             
-            <div id="noTaskRepo">
-                <p>Репозиторий не настроен для проекта этой задачи.</p>
-                <p>Сначала настройте репозиторий в проекте.</p>
+            <div id="taskMembersList" style="display: none;">
+                <h5>Текущие участники:</h5>
+                <ul id="taskMembersListContent"></ul>
             </div>
         </div>
+        
+        <button type="button" id="updateTaskLinkBtn" class="btn btn-primary">Обновить связь</button>
+        <button type="button" id="changeTaskRepo" class="btn btn-secondary">Изменить репозиторий</button>
+    </div>
+    
+    <div id="noTaskRepo">
+        <p>Репозиторий не настроен для этой задачи.</p>
+        <button type="button" id="setupTaskRepo" class="btn btn-primary">Настроить репозиторий</button>
+    </div>
+</div>
         
         <!-- Результаты -->
         <div id="result"></div>

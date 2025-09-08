@@ -10,7 +10,12 @@ $repoName = $input['repo_name'] ?? '';
 $members = $input['members'] ?? [];
 
 if (!$apiKey || !$organization || !$repoName) {
-    echo json_encode(['success' => false, 'message' => 'Не хватает данных']);
+    echo json_encode(['success' => false, 'message' => 'Не хватает данных для добавления участников']);
+    exit;
+}
+
+if (empty($members)) {
+    echo json_encode(['success' => true, 'message' => 'Нет участников для добавления']);
     exit;
 }
 
@@ -20,6 +25,7 @@ echo json_encode($result);
 function addMembersToRepository($apiKey, $organization, $repoName, $members) {
     $results = [];
     $errors = [];
+    $successCount = 0;
     
     foreach ($members as $member) {
         $member = trim($member);
@@ -28,7 +34,9 @@ function addMembersToRepository($apiKey, $organization, $repoName, $members) {
         $result = addCollaborator($apiKey, $organization, $repoName, $member);
         $results[$member] = $result;
         
-        if (!$result['success']) {
+        if ($result['success']) {
+            $successCount++;
+        } else {
             $errors[] = $member . ': ' . $result['message'];
         }
     }
@@ -36,14 +44,17 @@ function addMembersToRepository($apiKey, $organization, $repoName, $members) {
     if (empty($errors)) {
         return [
             'success' => true,
-            'message' => 'Все участники добавлены успешно',
-            'results' => $results
+            'message' => "Успешно добавлено участников: $successCount из " . count($members),
+            'results' => $results,
+            'added_count' => $successCount
         ];
     } else {
         return [
-            'success' => false,
-            'message' => 'Ошибки при добавлении: ' . implode(', ', $errors),
-            'results' => $results
+            'success' => $successCount > 0,
+            'message' => "Добавлено: $successCount из " . count($members) . '. Ошибки: ' . implode(', ', $errors),
+            'results' => $results,
+            'added_count' => $successCount,
+            'errors' => $errors
         ];
     }
 }
@@ -91,15 +102,23 @@ function addCollaborator($apiKey, $organization, $repoName, $username) {
     
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
     curl_close($ch);
+    
+    // Добавляем отладочную информацию
+    error_log("Add collaborator response for $username: HTTP $httpCode, Response: $response, Error: $error");
     
     if ($httpCode === 201 || $httpCode === 204) {
         return ['success' => true, 'message' => 'Добавлен успешно'];
     } else {
-        $error = json_decode($response, true);
+        $errorData = json_decode($response, true);
+        $errorMessage = $errorData['message'] ?? "HTTP Error: $httpCode";
+        if ($error) {
+            $errorMessage .= " | cURL Error: $error";
+        }
         return [
             'success' => false, 
-            'message' => $error['message'] ?? "HTTP Error: $httpCode"
+            'message' => $errorMessage
         ];
     }
 }

@@ -11,6 +11,14 @@
     margin: 20px 0;
     border-radius: 5px;
 }
+.info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+    border: 1px solid #bee5eb;
+}
 
 .form-group {
     margin-bottom: 15px;

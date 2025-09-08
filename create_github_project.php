@@ -6,108 +6,168 @@ $input = json_decode(file_get_contents('php://input'), true);
 
 $apiKey = $input['api_key'] ?? '';
 $organization = $input['organization'] ?? '';
-$repoName = $input['repo_name'] ?? '';
 $projectName = $input['project_name'] ?? '';
 $projectDescription = $input['project_description'] ?? '';
 $groupId = $input['group_id'] ?? '';
 
-if (!$apiKey || !$organization || !$projectName || !$repoName) {
+if (!$apiKey || !$organization || !$projectName) {
     echo json_encode(['success' => false, 'message' => 'Не хватает данных']);
     exit;
 }
 
-$result = createGithubProject($apiKey, $organization, $repoName, $projectName, $projectDescription, $groupId);
+$result = createGithubProject($apiKey, $organization, $projectName, $projectDescription, $groupId);
 echo json_encode($result);
 
-function createGithubProject($apiKey, $organization, $repoName, $projectName, $projectDescription, $groupId) {
-    // Создаем проект для организации (GitHub Projects v2)
-    $projectData = json_encode([
-        'title' => $projectName,
-        'body' => $projectDescription . "\n\nСинхронизация с Bitrix24 группой #$groupId"
+function createGithubProject($apiKey, $organization, $projectName, $projectDescription, $groupId) {
+    // Получаем ID организации через GraphQL
+    $orgId = getOrganizationId($apiKey, $organization);
+    if (!$orgId) {
+        return ['success' => false, 'message' => 'Не удалось получить ID организации'];
+    }
+    
+    // Создаем проект с использованием правильного GraphQL API
+    $query = '
+    mutation($input: CreateProjectV2Input!) {
+        createProjectV2(input: $input) {
+            projectV2 {
+                id
+                title
+                url
+            }
+        }
+    }';
+    
+    $variables = [
+        'input' => [
+            'title' => $projectName,
+            'ownerId' => $orgId
+        ]
+    ];
+    
+    $graphqlData = json_encode([
+        'query' => $query,
+        'variables' => $variables
     ]);
     
-    // Создаем проект
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, "https://api.github.com/orgs/$organization/projects");
+    curl_setopt($ch, CURLOPT_URL, "https://api.github.com/graphql");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $projectData);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $graphqlData);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: token ' . $apiKey,
+        'Authorization: bearer ' . $apiKey,
         'User-Agent: Bitrix24-GitHub-App',
-        'Content-Type: application/json',
-        'Accept: application/vnd.github.v3+json'
+        'Content-Type: application/json'
     ]);
     
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     
-    if ($httpCode === 201) {
-        $projectInfo = json_decode($response, true);
+    $responseData = json_decode($response, true);
+    
+    if ($httpCode === 200 && isset($responseData['data']['createProjectV2']['projectV2'])) {
+        $projectInfo = $responseData['data']['createProjectV2']['projectV2'];
         
-        // Создаем базовые колонки
-        $columns = ['To Do', 'In Progress', 'Done'];
-        foreach ($columns as $columnName) {
-            createProjectColumn($apiKey, $projectInfo['id'], $columnName);
+        // Добавляем описание через отдельный мутатор, если нужно
+        if (!empty($projectDescription)) {
+            updateProjectDescription($apiKey, $projectInfo['id'], $projectDescription, $groupId);
         }
         
         return [
             'success' => true,
             'project_id' => $projectInfo['id'],
-            'project_url' => $projectInfo['html_url'],
-            'project_name' => $projectInfo['name']
+            'project_url' => $projectInfo['url'],
+            'project_name' => $projectInfo['title']
         ];
     } else {
-        // Если не получилось создать проект для организации, попробуем для репозитория
-        return createRepoProject($apiKey, $organization, $repoName, $projectName, $projectDescription);
+        $errorMessage = 'Неизвестная ошибка';
+        if (isset($responseData['errors'][0]['message'])) {
+            $errorMessage = $responseData['errors'][0]['message'];
+        } elseif (isset($responseData['message'])) {
+            $errorMessage = $responseData['message'];
+        }
+        
+        return [
+            'success' => false,
+            'message' => 'Ошибка создания проекта: ' . $errorMessage,
+            'debug' => $responseData
+        ];
     }
 }
 
-function createRepoProject($apiKey, $organization, $repoName, $projectName, $projectDescription) {
-    // Создаем проект для репозитория (старая версия Projects)
-    $projectData = json_encode([
-        'name' => $projectName,
-        'body' => $projectDescription
+function getOrganizationId($apiKey, $organization) {
+    $query = '
+    query($login: String!) {
+        organization(login: $login) {
+            id
+        }
+    }';
+    
+    $graphqlData = json_encode([
+        'query' => $query,
+        'variables' => ['login' => $organization]
     ]);
     
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, "https://api.github.com/repos/$organization/$repoName/projects");
+    curl_setopt($ch, CURLOPT_URL, "https://api.github.com/graphql");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $projectData);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $graphqlData);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: token ' . $apiKey,
+        'Authorization: bearer ' . $apiKey,
         'User-Agent: Bitrix24-GitHub-App',
-        'Content-Type: application/json',
-        'Accept: application/vnd.github.inertia-preview+json'
+        'Content-Type: application/json'
     ]);
     
     $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     
-    if ($httpCode === 201) {
-        $projectInfo = json_decode($response, true);
-        
-        // Создаем базовые колонки
-        $columns = ['To Do', 'In Progress', 'Done'];
-        foreach ($columns as $columnName) {
-            createProjectColumn($apiKey, $projectInfo['id'], $columnName);
-        }
-        
-        return [
-            'success' => true,
-            'project_id' => $projectInfo['id'],
-            'project_url' => $projectInfo['html_url'],
-            'project_name' => $projectInfo['name']
-        ];
-    } else {
-        $error = json_decode($response, true);
-        return [
-            'success' => false,
-            'message' => $error['message'] ?? 'Ошибка создания проекта'
-        ];
+    $responseData = json_decode($response, true);
+    
+    if (isset($responseData['data']['organization']['id'])) {
+        return $responseData['data']['organization']['id'];
     }
+    
+    return null;
+}
+
+function updateProjectDescription($apiKey, $projectId, $projectDescription, $groupId) {
+    $fullDescription = $projectDescription . "\n\nСинхронизация с Bitrix24 группой #$groupId";
+    
+    $query = '
+    mutation($input: UpdateProjectV2Input!) {
+        updateProjectV2(input: $input) {
+            projectV2 {
+                id
+            }
+        }
+    }';
+    
+    $variables = [
+        'input' => [
+            'projectId' => $projectId,
+            'description' => $fullDescription
+        ]
+    ];
+    
+    $graphqlData = json_encode([
+        'query' => $query,
+        'variables' => $variables
+    ]);
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, "https://api.github.com/graphql");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $graphqlData);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: bearer ' . $apiKey,
+        'User-Agent: Bitrix24-GitHub-App',
+        'Content-Type: application/json'
+    ]);
+    
+    curl_exec($ch);
+    curl_close($ch);
 }
 ?>
