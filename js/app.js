@@ -3,7 +3,7 @@ BX24.ready(function() {
     const contextIdElement = document.getElementById('contextId');
     const contextType = contextTypeElement ? contextTypeElement.value : 'settings';
     const contextId = contextIdElement ? contextIdElement.value : null;
-    // Инициализация интерфейса в зависимости от контекста
+    
     initInterface();
     function initInterface() {
         if (contextType === 'settings') {
@@ -14,7 +14,7 @@ BX24.ready(function() {
             showTaskInterface();
         }
     }
-    // Глобальные настройки
+    
     function showGlobalSettings() {
         const globalSettings = document.getElementById('globalSettings');
         if (!globalSettings) return;
@@ -49,7 +49,7 @@ BX24.ready(function() {
             'global_organization': document.getElementById('global_organization'),
             'global_members': document.getElementById('global_members')
         };
-        // Проверяем существование всех элементов
+        
         for (let id in elements) {
             if (!elements[id]) {
                 showResult(`Элемент ${id} не найден`, 'error');
@@ -69,7 +69,7 @@ BX24.ready(function() {
             }
         });
     }
-    // Интерфейс проекта
+    
     function showProjectInterface() {
         const projectInterface = document.getElementById('projectInterface');
         if (!projectInterface) return;
@@ -84,10 +84,10 @@ BX24.ready(function() {
             const options = result.data();
             const projectData = options[optionKey] ? JSON.parse(options[optionKey]) : null;
             if (projectData && projectData.repo_url) {
-                // Показываем текущий репозиторий
+                
                 showCurrentRepository(projectData);
             } else {
-                // Показываем форму выбора/создания репозитория
+                
                 showRepoSelector();
             }
         });
@@ -108,7 +108,7 @@ BX24.ready(function() {
         if (repoSelector) repoSelector.style.display = 'none';
         if (createRepoForm) createRepoForm.style.display = 'none';
         if (membersSection) membersSection.style.display = 'block';
-        // Загружаем участников
+        
         const repoMembers = document.getElementById('repo_members');
         if (repoMembers) {
             repoMembers.value = projectData.members ? projectData.members.join(',') : '';
@@ -126,9 +126,31 @@ BX24.ready(function() {
         if (repoSelector) repoSelector.style.display = 'block';
         if (createRepoForm) createRepoForm.style.display = 'block';
         if (membersSection) membersSection.style.display = 'none';
+
+        
+        if (contextType === 'project' && contextId) {
+             
+            
+            BX24.callMethod('sonet_group.get', { ID: contextId }, function(result) {
+                 if (!result.error() && result.data().length > 0) {
+                    const projectName = result.data()[0].NAME;
+                    const repoNameInput = document.getElementById('new_repo_name');
+                    if (repoNameInput && projectName) {
+                        const transliteratedName = transliterateAndClean(projectName);
+                        
+                        repoNameInput.value = `${transliteratedName}_${contextId}`;
+                    }
+                 } else {
+                     
+                     
+                     console.warn("Не удалось получить название проекта для автозаполнения");
+                 }
+            });
+        }
+        
     }
     function setupProjectEvents() {
-        // Переключение между созданием и выбором репозитория
+        
         const repoActions = document.querySelectorAll('input[name="repoAction"]');
         repoActions.forEach(radio => {
             radio.addEventListener('change', function() {
@@ -143,7 +165,7 @@ BX24.ready(function() {
                 }
             });
         });
-        // Кнопки действий
+        
         const eventHandlers = {
             'createRepoBtn': createRepository,
             'selectRepoBtn': selectRepository,
@@ -167,6 +189,47 @@ BX24.ready(function() {
         if (createRepoForm) createRepoForm.style.display = 'block';
         if (membersSection) membersSection.style.display = 'none';
     }
+    window.showResult = showResult;
+
+        function transliterateAndClean(name) {
+        if (!name) return '';
+
+        const ru = {
+            'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd',
+            'е': 'e', 'ё': 'e', 'ж': 'zh', 'з': 'z', 'и': 'i',
+            'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n',
+            'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't',
+            'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch',
+            'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '',
+            'э': 'e', 'ю': 'yu', 'я': 'ya',
+            'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D',
+            'Е': 'E', 'Ё': 'E', 'Ж': 'Zh', 'З': 'Z', 'И': 'I',
+            'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M', 'Н': 'N',
+            'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T',
+            'У': 'U', 'Ф': 'F', 'Х': 'H', 'Ц': 'Ts', 'Ч': 'Ch',
+            'Ш': 'Sh', 'Щ': 'Sch', 'Ъ': '', 'Ы': 'Y', 'Ь': '',
+            'Э': 'E', 'Ю': 'Yu', 'Я': 'Ya'
+        };
+
+        
+        let result = name.split('').map(function (char) {
+            return ru[char] || char;
+        }).join('');
+
+        result = result.replace(/[^a-zA-Z0-9_\-]/g, '_');
+
+        result = result.replace(/_+/g, '_');
+
+        result = result.replace(/^_+|_+$/g, '');
+
+        result = result.toLowerCase();
+
+        if (result === '' || /^\d/.test(result)) {
+            result = 'repo_' + result; 
+        }
+
+        return result || 'unnamed_repo'; 
+    }
 function createRepository() {
     const repoName = document.getElementById('new_repo_name');
     const repoDescription = document.getElementById('new_repo_description');
@@ -183,7 +246,7 @@ function createRepository() {
     const repoNameValue = repoName.value.trim();
     const isPrivate = repoPrivate ? repoPrivate.checked : true;
     const withReadme = repoReadme ? repoReadme.checked : true;
-    // Получаем глобальные настройки для создания
+    
     BX24.callMethod('app.option.get', {}, function(result) {
         if (result.error()) {
             showResult('Ошибка получения настроек: ' + result.error(), 'error');
@@ -195,7 +258,7 @@ function createRepository() {
             return;
         }
         showResult('Создание репозитория...', 'info');
-        // Отправляем запрос на создание
+        
         fetch('create_repo.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -212,7 +275,7 @@ function createRepository() {
         .then(data => {
             console.log('Create repo response:', data);
             if (data.success) {
-                // Используем имя репозитория из ответа
+                
                 const actualRepoName = data.repo_name || repoNameValue;
                 const projectData = {
                     repo_name: actualRepoName,
@@ -222,11 +285,11 @@ function createRepository() {
                 saveProjectRepo(projectData, function(success) {
                     if (success) {
                         showResult('Репозиторий создан: ' + data.url, 'success');
-                        // Напрямую обновляем интерфейс вместо перезагрузки
+                        
                         showCurrentRepository(projectData);
                     } else {
                         showResult('Репозиторий создан, но ошибка сохранения: ' + data.url, 'warning');
-                        // Даже при ошибке сохранения показываем интерфейс
+                        
                         showCurrentRepository({
                             repo_name: actualRepoName,
                             repo_url: data.url,
@@ -254,7 +317,7 @@ function createRepository() {
             showResult('Укажите URL репозитория', 'error');
             return;
         }
-        // Извлекаем название из URL
+        
         const matches = repoUrl.value.match(/github\.com\/[^\/]+\/([^\/]+)/);
         const repoName = matches ? matches[1] : repoUrl.value;
         saveProjectRepo({
@@ -268,7 +331,7 @@ function createRepository() {
 function saveProjectRepo(data, callback) {
     const optionKey = `github_project_${contextId}`;
     const options = {};
-    // Извлекаем имя репозитория из URL если оно не указано
+    
     if (!data.repo_name && data.repo_url) {
         const matches = data.repo_url.match(/github\.com\/[^\/]+\/([^\/]+)/);
         if (matches && matches[1]) {
@@ -292,7 +355,7 @@ function updateMembers() {
         return;
     }
     const members = membersText.value.split(',').map(s => s.trim()).filter(s => s);
-    // Получаем текущие данные проекта
+    
     const optionKey = `github_project_${contextId}`;
     BX24.callMethod('app.option.get', {}, function(result) {
         if (result.error()) {
@@ -306,10 +369,10 @@ function updateMembers() {
             showResult('Репозиторий не настроен', 'error');
             return;
         }
-        // Добавляем участников в GitHub
+        
         addMembersToGithub(projectData, members, function(success) {
             if (success) {
-                // Сохраняем в Bitrix24 только если успешно добавили в GitHub
+                
                 projectData.members = members;
                 const newOptions = {};
                 newOptions[optionKey] = JSON.stringify(projectData);
@@ -329,7 +392,7 @@ function updateMembers() {
 }
 function addMembersToGithub(projectData, members, callback) {
     console.log('Adding members to repo:', projectData.repo_name, 'Members:', members);
-    // Получаем глобальные настройки для API ключа
+    
     BX24.callMethod('app.option.get', {}, function(result) {
         if (result.error()) {
             showResult('Ошибка получения настроек: ' + result.error(), 'error');
@@ -350,17 +413,17 @@ function addMembersToGithub(projectData, members, callback) {
             callback(true);
             return;
         }
-        // Извлекаем правильное имя репозитория из URL
+        
         let repoName = projectData.repo_name;
         if (projectData.repo_url) {
-            // Извлекаем имя из URL: https://github.com/org/repo-name
+            
             const matches = projectData.repo_url.match(/github\.com\/[^\/]+\/([^\/]+)/);
             if (matches && matches[1]) {
                 repoName = matches[1];
                 console.log('Extracted repo name from URL:', repoName);
             }
         }
-        // Отправляем запрос на добавление участников
+        
         fetch('add_members.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -391,7 +454,7 @@ function addMembersToGithub(projectData, members, callback) {
         });
     });
 }
-    // Интерфейс задачи
+    
     function showTaskInterface() {
         const taskInterface = document.getElementById('taskInterface');
         if (!taskInterface) return;
@@ -400,42 +463,42 @@ function addMembersToGithub(projectData, members, callback) {
         setupTaskEvents();
     }
     function loadTaskRepo() {
-    // Сначала получаем данные задачи
+    
     BX24.callMethod('tasks.task.get', { taskId: contextId }, function(result) {
         if (result.error()) {
-            showTaskSetupInterface(null, false); // Передаем, что группа отсутствует
+            showTaskSetupInterface(null, false); 
             return;
         }
         const task = result.data().task;
         const groupId = task.groupId;
-        const hasGroup = !!groupId; // Проверяем, есть ли группа у задачи
+        const hasGroup = !!groupId; 
 
-        // Проверяем, есть ли уже настроенный репозиторий для задачи
+        
         const taskOptionKey = `github_task_${contextId}`;
         BX24.callMethod('app.option.get', {}, function(optionResult) {
             if (optionResult.error()) {
-                showTaskSetupInterface(null, hasGroup); // Передаем информацию о группе
+                showTaskSetupInterface(null, hasGroup); 
                 return;
             }
             const options = optionResult.data();
             const taskData = options[taskOptionKey] ? JSON.parse(options[taskOptionKey]) : null;
             if (taskData && taskData.repo_url) {
-                // Показываем уже настроенный репозиторий задачи
+                
                 showTaskRepoInterface(taskData);
             } else if (groupId) {
-                // Проверяем репозиторий проекта
+                
                 const projectOptionKey = `github_project_${groupId}`;
                 const projectData = options[projectOptionKey] ? JSON.parse(options[projectOptionKey]) : null;
                 if (projectData && projectData.repo_url) {
-                    // Есть репозиторий проекта - показываем выбор
-                    showTaskSetupInterface(projectData, hasGroup); // Передаем информацию о группе
+                    
+                    showTaskSetupInterface(projectData, hasGroup); 
                 } else {
-                    // Нет репозитория проекта - показываем настройку
-                    showTaskSetupInterface(null, hasGroup); // Передаем информацию о группе
+                    
+                    showTaskSetupInterface(null, hasGroup); 
                 }
             } else {
-                // Нет группы - показываем настройку без опции проекта
-                showTaskSetupInterface(null, hasGroup); // Передаем информацию о группе (false в данном случае)
+                
+                showTaskSetupInterface(null, hasGroup); 
             }
         });
     });
@@ -454,7 +517,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
     if (taskRepo) taskRepo.style.display = 'none';
     if (taskRepoSetup) taskRepoSetup.style.display = 'block';
 
-    // Скрываем все секции опций
+    
     const useProjectRepoSection = document.getElementById('useProjectRepo');
     const createTaskRepoSection = document.getElementById('createTaskRepo');
     const selectTaskRepoSection = document.getElementById('selectTaskRepo');
@@ -463,26 +526,26 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
     if (createTaskRepoSection) createTaskRepoSection.style.display = 'none';
     if (selectTaskRepoSection) selectTaskRepoSection.style.display = 'none';
 
-    // Снимаем выделение со всех radio кнопок
+    
     const taskRepoOptions = document.querySelectorAll('input[name="taskRepoOption"]');
     taskRepoOptions.forEach(radio => {
         radio.checked = false;
     });
 
-    // Управление опцией "Использовать репозиторий проекта"
+    
     if (hasGroup && projectData && useProjectRepoSection && projectRepoLink) {
-        // Если задача в группе и есть данные проекта, показываем опцию
+        
         if (projectOptionLabel) projectOptionLabel.style.display = 'block';
-        useProjectRepoSection.style.display = 'none'; // Секция скрыта до выбора опции
+        useProjectRepoSection.style.display = 'none'; 
         projectRepoLink.href = projectData.repo_url;
         projectRepoLink.textContent = projectData.repo_name || projectData.repo_url;
     } else {
-        // Если задача не в группе или нет данных проекта, скрываем опцию
+        
         if (projectOptionLabel) projectOptionLabel.style.display = 'none';
         if (useProjectRepoSection) useProjectRepoSection.style.display = 'none';
     }
 
-    // Автозаполнение полей при необходимости
+    
     fillTaskAssignees();
 }
     function showTaskRepoInterface(taskData) {
@@ -500,9 +563,39 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
             taskRepoLink.href = taskData.repo_url;
             taskRepoLink.textContent = taskData.repo_name || taskData.repo_url;
         }
+        if (taskMembersList) {
+            taskMembersList.value = taskData.members ? taskData.members.join(',') : '';
+        }
+        if (taskData.members) {
+            showTaskMembers(taskData.members);
+        }
+
+        
         if (taskBranch) {
-            taskBranch.value = taskData.branch || '';
-            // Если ветка уже указана, показываем кнопку открытия
+            
+            if (taskData.branch) {
+                taskBranch.value = taskData.branch;
+            } else {
+                
+                BX24.callMethod('tasks.task.get', { taskId: contextId }, function(result) {
+                    if (!result.error()) {
+                        const taskName = result.data().task.title;
+                        if (taskName && !taskBranch.value) { 
+                            const transliteratedName = transliterateAndClean(taskName);
+                            
+                            taskBranch.value = `task-${contextId}-${transliteratedName}`;
+                        }
+                    } else {
+                        console.error("Ошибка получения задачи для автозаполнения ветки:", result.error());
+                        
+                        if (!taskBranch.value) {
+                             taskBranch.value = `task-${contextId}`;
+                        }
+                    }
+                });
+            }
+
+            
             if (taskData.branch && openBranchBtn) {
                 openBranchBtn.style.display = 'inline-block';
                 openBranchBtn.onclick = function() {
@@ -511,12 +604,18 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
             } else if (openBranchBtn) {
                 openBranchBtn.style.display = 'none';
             }
-        }
-        if (taskMembersList) {
-            taskMembersList.value = taskData.members ? taskData.members.join(',') : '';
-        }
-        if (taskData.members) {
-            showTaskMembers(taskData.members);
+
+            
+            taskBranch.addEventListener('input', function() {
+                if (this.value && openBranchBtn) {
+                    openBranchBtn.style.display = 'inline-block';
+                    openBranchBtn.onclick = function() {
+                        window.open(`${taskData.repo_url}/tree/${taskBranch.value}`, '_blank');
+                    };
+                } else if (openBranchBtn) {
+                    openBranchBtn.style.display = 'none';
+                }
+            });
         }
     }
     function setupTaskRepoOptions() {
@@ -534,16 +633,37 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
                     if (useProjectRepo) useProjectRepo.style.display = 'none';
                     if (createTaskRepo) createTaskRepo.style.display = 'block';
                     if (selectTaskRepo) selectTaskRepo.style.display = 'none';
-                    // Автозаполнение названия репозитория
+                    
+                    
                     const taskRepoName = document.getElementById('task_repo_name');
-                    if (taskRepoName) {
-                        taskRepoName.value = `task-${contextId}-${Date.now()}`;
-                    }
                     const taskRepoDescription = document.getElementById('task_repo_description');
+                    if (taskRepoName) {
+                        
+                        BX24.callMethod('tasks.task.get', { taskId: contextId }, function(taskResult) {
+                            if (!taskResult.error()) {
+                                const taskName = taskResult.data().task.title;
+                                if(taskName) {
+                                    const transliteratedName = transliterateAndClean(taskName);
+                                    
+                                    taskRepoName.value = `${transliteratedName}/${contextId}`;
+                                } else {
+                                     
+                                     taskRepoName.value = `task-${contextId}-${Date.now()}`;
+                                }
+                            } else {
+                                console.error("Ошибка получения задачи для автозаполнения названия:", taskResult.error());
+                                
+                                 taskRepoName.value = `task-${contextId}-${Date.now()}`;
+                            }
+                        });
+                        
+                        
+                    }
                     if (taskRepoDescription) {
                         taskRepoDescription.value = `Репозиторий для задачи #${contextId}`;
                     }
-                    // Автозаполнение участников из исполнителей задачи
+                    
+                    
                     fillTaskAssignees();
                 } else {
                     if (useProjectRepo) useProjectRepo.style.display = 'none';
@@ -554,51 +674,51 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
         });
     }
     function setupTaskEvents() {
-        // Кнопка настройки репозитория
+        
         const setupTaskRepo = document.getElementById('setupTaskRepo');
         if (setupTaskRepo) {
             setupTaskRepo.addEventListener('click', function() {
-                loadTaskRepo(); // Перезагружаем интерфейс настройки
+                loadTaskRepo(); 
             });
         }
-        // Подтверждение использования репозитория проекта
+        
         const confirmProjectRepo = document.getElementById('confirmProjectRepo');
         if (confirmProjectRepo) {
             confirmProjectRepo.addEventListener('click', useProjectRepository);
         }
-        // Создание нового репозитория
+        
         const createTaskRepoBtn = document.getElementById('createTaskRepoBtn');
         if (createTaskRepoBtn) {
             createTaskRepoBtn.addEventListener('click', createTaskRepository);
         }
-        // Выбор существующего репозитория
+        
         const selectTaskRepoBtn = document.getElementById('selectTaskRepoBtn');
         if (selectTaskRepoBtn) {
             selectTaskRepoBtn.addEventListener('click', selectTaskRepository);
         }
-        // Обновление связи задачи
+        
         const updateTaskLinkBtn = document.getElementById('updateTaskLinkBtn');
         if (updateTaskLinkBtn) {
             updateTaskLinkBtn.addEventListener('click', updateTaskLink);
         }
-        // Обновление участников задачи
+        
         const updateTaskMembersBtn = document.getElementById('updateTaskMembersBtn');
         if (updateTaskMembersBtn) {
             updateTaskMembersBtn.addEventListener('click', updateTaskMembers);
         }
-        // Изменение репозитория задачи
+        
         const changeTaskRepoBtn = document.getElementById('changeTaskRepo');
         if (changeTaskRepoBtn) {
             changeTaskRepoBtn.addEventListener('click', function() {
                 showTaskSetupInterface();
             });
         }
-        // Создание ветки
+        
         const createBranchBtn = document.getElementById('createBranchBtn');
         if (createBranchBtn) {
             createBranchBtn.addEventListener('click', createBranch);
         }
-        // Добавляем обработчик для Enter в поле ветки
+        
         const taskBranch = document.getElementById('task_branch');
         if (taskBranch) {
             taskBranch.addEventListener('keypress', function(e) {
@@ -607,11 +727,11 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
                 }
             });
         }
-        // Настройка опций репозитория
+        
         setupTaskRepoOptions();
     }
     function useProjectRepository() {
-        // Получаем данные проекта
+        
         BX24.callMethod('tasks.task.get', { taskId: contextId }, function(result) {
             if (result.error()) {
                 showResult('Ошибка получения данных задачи', 'error');
@@ -619,11 +739,13 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
             }
             const task = result.data().task;
             const groupId = task.groupId;
+            
             if (!groupId) {
                 showResult('Задача не принадлежит проекту', 'error');
                 return;
             }
-            // Получаем репозиторий проекта
+            
+            
             const projectOptionKey = `github_project_${groupId}`;
             BX24.callMethod('app.option.get', {}, function(optionResult) {
                 if (optionResult.error()) {
@@ -632,18 +754,35 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
                 }
                 const options = optionResult.data();
                 const projectData = options[projectOptionKey] ? JSON.parse(options[projectOptionKey]) : null;
+                
                 if (!projectData || !projectData.repo_url) {
                     showResult('Репозиторий проекта не настроен', 'error');
                     return;
                 }
-                // Сохраняем репозиторий проекта для задачи
+                
+                
+                const taskName = task.title;
+                let branchName = `task/${contextId}`; 
+                
+                if (taskName) {
+                    const transliteratedName = transliterateAndClean(taskName);
+                    
+                    const maxLength = 50; 
+                    const truncatedName = transliteratedName.substring(0, maxLength).replace(/_+$/, ''); 
+                    if (truncatedName) {
+                        branchName = `${truncatedName}/${contextId}`;
+                    }
+                }
+                
+                
                 const taskData = {
                     repo_url: projectData.repo_url,
                     repo_name: projectData.repo_name,
-                    branch: `task/${contextId}`,
+                    branch: branchName,
                     from_project: true,
                     members: projectData.members || []
                 };
+                
                 saveTaskRepo(taskData, function(success) {
                     if (success) {
                         showResult('Репозиторий задачи настроен!', 'success');
@@ -667,7 +806,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
             showResult('Укажите название репозитория', 'error');
             return;
         }
-        // Получаем участников
+        
         let members = [];
         if (repoMembers && repoMembers.value) {
             members = repoMembers.value.split(',').map(s => s.trim()).filter(s => s);
@@ -675,7 +814,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
         const isPrivate = repoPrivate ? repoPrivate.checked : true;
         const withReadme = repoReadme ? repoReadme.checked : true;
         showResult('Создание репозитория...', 'info');
-        // Получаем глобальные настройки
+        
         BX24.callMethod('app.option.get', {}, function(result) {
             if (result.error()) {
                 showResult('Ошибка получения настроек: ' + result.error(), 'error');
@@ -686,7 +825,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
                 showResult('Сначала настройте глобальные настройки GitHub', 'error');
                 return;
             }
-            // Создаем репозиторий
+            
             fetch('create_repo.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -709,10 +848,10 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
                         from_project: false,
                         members: members
                     };
-                    // Сохраняем репозиторий
+                    
                     saveTaskRepo(taskData, function(success) {
                         if (success) {
-                            // Если есть участники, добавляем их
+                            
                             if (members.length > 0) {
                                 showResult('Добавление участников в репозиторий...', 'info');
                                 addMembersToTaskRepo(taskData, members, function(addSuccess) {
@@ -741,7 +880,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
             });
         });
     }
-    // Функция для выбора существующего репозитория
+    
     function selectTaskRepository() {
         const repoUrl = document.getElementById('existing_task_repo_url');
         const repoMembers = document.getElementById('existing_task_repo_members');
@@ -753,10 +892,10 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
             showResult('Укажите URL репозитория', 'error');
             return;
         }
-        // Извлекаем название из URL
+        
         const matches = repoUrl.value.match(/github\.com\/[^\/]+\/([^\/]+)/);
         const repoName = matches ? matches[1] : repoUrl.value;
-        // Получаем участников
+        
         let members = [];
         if (repoMembers && repoMembers.value) {
             members = repoMembers.value.split(',').map(s => s.trim()).filter(s => s);
@@ -772,7 +911,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
             if (success) {
                 showResult('Репозиторий привязан!', 'success');
                 showTaskRepoInterface(taskData);
-                // Если есть участники, добавляем их
+                
                 if (members.length > 0) {
                     addMembersToTaskRepo(taskData, members, function(addSuccess) {
                         if (addSuccess) {
@@ -799,7 +938,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
         });
     }
     function addMembersToTaskRepo(taskData, members, callback) {
-        // Получаем глобальные настройки
+        
         BX24.callMethod('app.option.get', {}, function(result) {
             if (result.error()) {
                 showResult('Ошибка получения настроек: ' + result.error(), 'error');
@@ -815,7 +954,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
                 return;
             }
             showResult('Отправка запроса на добавление участников...', 'info');
-            // Отправляем запрос на добавление участников
+            
             fetch('add_members.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -856,7 +995,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
             return;
         }
         showResult('Обновление участников...', 'info');
-        // Получаем текущие данные задачи
+        
         const taskOptionKey = `github_task_${contextId}`;
         BX24.callMethod('app.option.get', {}, function(result) {
             if (result.error()) {
@@ -869,10 +1008,10 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
                 showResult('Репозиторий не настроен', 'error');
                 return;
             }
-            // Добавляем участников в GitHub
+            
             addMembersToTaskRepo(taskData, members, function(success) {
                 if (success) {
-                    // Сохраняем в Bitrix24 только если успешно добавили в GitHub
+                    
                     taskData.members = members;
                     const newOptions = {};
                     newOptions[taskOptionKey] = JSON.stringify(taskData);
@@ -913,10 +1052,10 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
             if (assignees.length > 0) {
                 const membersInput = document.getElementById('task_repo_members');
                 if (membersInput) {
-                    // Преобразуем исполнителей в список GitHub пользователей
-                    // Пока просто покажем уведомление, что нужно вручную указать GitHub логины
+                    
+                    
                     const githubUsers = assignees.map(a => a.name || a.lastName || 'user').join(',');
-                    membersInput.value = ''; // Пока оставляем пустым, пользователь должен ввести GitHub логины
+                    membersInput.value = ''; 
                     showResult('Укажите GitHub логины исполнителей через запятую', 'info');
                 }
             }
@@ -942,7 +1081,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
                     showResult('Ошибка сохранения: ' + saveResult.error(), 'error');
                 } else {
                     showResult('Связь обновлена!', 'success');
-                    // Обновляем кнопку открытия ветки
+                    
                     const openBranchBtn = document.getElementById('openBranchBtn');
                     if (branch && openBranchBtn) {
                         openBranchBtn.style.display = 'inline-block';
@@ -956,7 +1095,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
             });
         });
     }
-    // Функция для создания ветки
+    
     function createBranch() {
         const branchName = document.getElementById('task_branch');
         if (!branchName || !branchName.value) {
@@ -964,7 +1103,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
             return;
         }
         const branch = branchName.value.trim();
-        // Получаем данные репозитория задачи
+        
         const taskOptionKey = `github_task_${contextId}`;
         BX24.callMethod('app.option.get', {}, function(result) {
             if (result.error()) {
@@ -977,7 +1116,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
                 showResult('Репозиторий не настроен', 'error');
                 return;
             }
-            // Получаем глобальные настройки
+            
             BX24.callMethod('app.option.get', {}, function(globalResult) {
                 if (globalResult.error()) {
                     showResult('Ошибка получения настроек: ' + globalResult.error(), 'error');
@@ -991,8 +1130,8 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
                     return;
                 }
                 showResult('Создание ветки...', 'info');
-                // Создаем ветку через GitHub API
-                // Сначала получаем SHA последнего коммита в main/master
+                
+                
                 fetch(`https://api.github.com/repos/${organization}/${taskData.repo_name}/git/refs/heads/main`, {
                     headers: {
                         'Authorization': `token ${apiKey}`,
@@ -1001,7 +1140,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
                 })
                 .then(response => {
                     if (!response.ok) {
-                        // Пытаемся получить master вместо main
+                        
                         return fetch(`https://api.github.com/repos/${organization}/${taskData.repo_name}/git/refs/heads/master`, {
                             headers: {
                                 'Authorization': `token ${apiKey}`,
@@ -1017,7 +1156,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
                     if (!sha) {
                         throw new Error('Не удалось получить SHA последнего коммита');
                     }
-                    // Создаем новую ветку
+                    
                     return fetch(`https://api.github.com/repos/${organization}/${taskData.repo_name}/git/refs`, {
                         method: 'POST',
                         headers: {
@@ -1035,7 +1174,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
                 .then(data => {
                     if (data.ref) {
                         showResult(`Ветка "${branch}" успешно создана!`, 'success');
-                        // Показываем кнопку для открытия ветки
+                        
                         const openBranchBtn = document.getElementById('openBranchBtn');
                         if (openBranchBtn) {
                             openBranchBtn.style.display = 'inline-block';
@@ -1043,12 +1182,12 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
                                 window.open(`${taskData.repo_url}/tree/${branch}`, '_blank');
                             };
                         }
-                        // Сохраняем ветку в настройках задачи
+                        
                         taskData.branch = branch;
                         const newOptions = {};
                         newOptions[taskOptionKey] = JSON.stringify(taskData);
                         BX24.callMethod('app.option.set', { options: newOptions }, function() {
-                            // Игнорируем ошибки сохранения, главное что ветка создана
+                            
                         });
                     } else {
                         showResult('Ошибка создания ветки: ' + (data.message || 'Неизвестная ошибка'), 'error');
@@ -1060,7 +1199,7 @@ function showTaskSetupInterface(projectData = null, hasGroup = false) {
             });
         });
     }
-    // Вспомогательные функции
+    
     function showMembers(members) {
         if (members && members.length > 0) {
             const membersList = document.getElementById('membersList');
