@@ -23,56 +23,64 @@ BX24.ready(function() {
                     return;
                 }
 
-                
-                
                 const firstUser = users[0];
                 if (firstUser.UF_USR_GITHUB_PROFILE === undefined) {
                     
-                    BX24.callMethod('user.userfield.list', {}, function(fieldsResult) {
-                        if (fieldsResult.error()) {
-                            console.error("Ошибка получения списка пользовательских полей:", fieldsResult.error());
-                            const usersWithProfiles = users.map(u => ({ 
-                                ...u, 
-                                GITHUB_PROFILE: null,
-                                DISPLAY_NAME: (u.NAME || '') + ' ' + (u.LAST_NAME || '')
-                            }));
-                            if (callback) callback(usersWithProfiles);
-                            return;
-                        }
+                    fetch('fieldsGet.php')
+                        .then(r => r.json())
+                        .then(fieldsResult => {
+                            if (!fieldsResult.success) {
+                                console.error("Ошибка получения списка пользовательских полей:", fieldsResult.message);
+                                const usersWithProfiles = users.map(u => ({ 
+                                    ...u, 
+                                    GITHUB_PROFILE: null,
+                                    DISPLAY_NAME: (u.NAME || '') + ' ' + (u.LAST_NAME || '')
+                                }));
+                                if (callback) callback(usersWithProfiles);
+                                return;
+                            }
 
-                        const fields = fieldsResult.data();
-                        
-                        const githubField = fields.find(f => f.FIELD_NAME === 'UF_USR_GITHUB_PROFILE');
-                        
-                        if (!githubField) {
-                            console.warn("Пользовательское поле UF_USR_GITHUB_PROFILE не найдено в списке полей");
-                            const usersWithProfiles = users.map(u => ({ 
-                                ...u, 
-                                GITHUB_PROFILE: null,
-                                DISPLAY_NAME: (u.NAME || '') + ' ' + (u.LAST_NAME || '')
-                            }));
-                            if (callback) callback(usersWithProfiles);
-                            return;
-                        } else {
-                            console.log("Поле UF_USR_GITHUB_PROFILE найдено, но не было возвращено user.get. Возможно, проблема с правами или данными.");
+                            const fields = fieldsResult.fields || [];
                             
+                            const githubField = fields.find(f => f.FIELD_NAME === 'UF_USR_GITHUB_PROFILE');
+                            
+                            if (!githubField) {
+                                console.warn("Пользовательское поле UF_USR_GITHUB_PROFILE не найдено в списке полей");
+                                const usersWithProfiles = users.map(u => ({ 
+                                    ...u, 
+                                    GITHUB_PROFILE: null,
+                                    DISPLAY_NAME: (u.NAME || '') + ' ' + (u.LAST_NAME || '')
+                                }));
+                                if (callback) callback(usersWithProfiles);
+                                return;
+                            } else {
+                                console.log("Поле UF_USR_GITHUB_PROFILE найдено, но не было возвращено user.get. Возможно, проблема с правами или данными.");
+                                
+                                const usersWithProfiles = users.map(u => ({ 
+                                    ...u, 
+                                    GITHUB_PROFILE: null,
+                                    DISPLAY_NAME: (u.NAME || '') + ' ' + (u.LAST_NAME || '')
+                                }));
+                                if (callback) callback(usersWithProfiles);
+                                return;
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Ошибка сети при запросе полей:", err);
                             const usersWithProfiles = users.map(u => ({ 
                                 ...u, 
                                 GITHUB_PROFILE: null,
                                 DISPLAY_NAME: (u.NAME || '') + ' ' + (u.LAST_NAME || '')
                             }));
                             if (callback) callback(usersWithProfiles);
-                            return;
-                        }
-                    });
+                        });
                 } else {
                     
-                    const usersWithProfiles = users.map(user => ({
+                    const usersWithProfiles = users.map(user =>({
                         ...user,
                         GITHUB_PROFILE: user.UF_USR_GITHUB_PROFILE || null,
                         DISPLAY_NAME: (user.NAME || '') + ' ' + (user.LAST_NAME || '')
                     }));
-
                     
                     const usersWithGithub = usersWithProfiles.filter(u => u.GITHUB_PROFILE);
 
@@ -82,7 +90,6 @@ BX24.ready(function() {
         );
     }
 
-    
     function createUsersSelector(containerId, onUserSelectCallback) {
         const container = document.getElementById(containerId);
         if (!container) {
@@ -96,7 +103,6 @@ BX24.ready(function() {
                 return;
             }
 
-            
             const select = document.createElement('select');
             select.multiple = true;
             select.size = 5; 
@@ -117,7 +123,6 @@ BX24.ready(function() {
             container.innerHTML = '';
             container.appendChild(select);
 
-            
             if (onUserSelectCallback) {
                 select.addEventListener('change', function() {
                     const selectedOptions = Array.from(select.selectedOptions);
@@ -132,7 +137,6 @@ BX24.ready(function() {
         });
     }
 
-    
     function updateSelectedUsersDisplay(displayElementId, usernamesInputId, selectedUsers) {
         const displayElement = document.getElementById(displayElementId);
         const usernamesInput = document.getElementById(usernamesInputId);
@@ -148,7 +152,6 @@ BX24.ready(function() {
             return;
         }
 
-        
         displayElement.innerHTML = '';
         const usernames = selectedUsers.map(user => user.githubProfile);
         usernamesInput.value = usernames.join(',');
@@ -166,7 +169,6 @@ BX24.ready(function() {
         displayElement.appendChild(ul);
     }
 
-    
     function addSelectedUsersToInput(inputId, selectedUsernamesInputId) {
         const selectedUsernamesInput = document.getElementById(selectedUsernamesInputId);
         const membersInput = document.getElementById(inputId);
@@ -176,10 +178,8 @@ BX24.ready(function() {
                 const currentMembers = membersInput.value.split(',').map(m => m.trim()).filter(m => m);
                 const newMembers = selectedUsernames.split(',').map(m => m.trim()).filter(m => m);
                 
-                
                 const allMembers = [...new Set([...currentMembers, ...newMembers])];
                 membersInput.value = allMembers.join(',');
-                
                 
                 document.getElementById(selectedUsernamesInputId).value = '';
                 
@@ -189,7 +189,6 @@ BX24.ready(function() {
                     displayElement.innerHTML = '';
                 }
                 
-                
                 if (window.showResult) {
                     window.showResult('Выбранные пользователи добавлены в список участников.', 'info');
                 }
@@ -197,17 +196,14 @@ BX24.ready(function() {
         }
     }
 
-    
     function initProjectUserSelectors() {
         const contextTypeElement = document.getElementById('contextType');
         const contextType = contextTypeElement ? contextTypeElement.value : 'settings';
         
         if (contextType === 'project') {
-            
             createUsersSelector('project-users-selector-container', function(selectedUsers) {
                 updateSelectedUsersDisplay('selected-project-github-users', 'selected_project_github_usernames', selectedUsers);
             });
-            
             
             const addSelectedBtn = document.getElementById('addSelectedProjectUsersBtn');
             if (addSelectedBtn) {
@@ -218,27 +214,22 @@ BX24.ready(function() {
         }
     }
 
-    
     function initTaskUserSelectors() {
         const contextTypeElement = document.getElementById('contextType');
         const contextType = contextTypeElement ? contextTypeElement.value : 'settings';
         
         if (contextType === 'task') {
-            
             createUsersSelector('task-users-selector-container-new', function(selectedUsers) {
                 updateSelectedUsersDisplay('selected-task-github-users-new', 'selected_task_github_usernames_new', selectedUsers);
             });
-            
             
             createUsersSelector('task-users-selector-container-existing', function(selectedUsers) {
                 updateSelectedUsersDisplay('selected-task-github-users-existing', 'selected_task_github_usernames_existing', selectedUsers);
             });
             
-            
             createUsersSelector('task-users-selector-container-members', function(selectedUsers) {
                 updateSelectedUsersDisplay('selected-task-github-users-members', 'selected_task_github_usernames_members', selectedUsers);
             });
-            
             
             document.getElementById('addSelectedTaskUsersBtnNew').onclick = function() {
                 addSelectedUsersToInput('task_repo_members', 'selected_task_github_usernames_new');
@@ -254,22 +245,14 @@ BX24.ready(function() {
         }
     }
 
-    
     function initTabHandlers() {
-        
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('tab-button')) {
                 e.preventDefault();
                 const tabName = e.target.dataset.tab;
-                
-                
                 document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-                
                 e.target.classList.add('active');
-                
-                
                 document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-                
                 const activeTab = document.getElementById(tabName);
                 if (activeTab) {
                     activeTab.classList.add('active');
@@ -277,15 +260,12 @@ BX24.ready(function() {
             }
         });
 
-        
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('tab-button-task')) {
                 e.preventDefault();
                 const tabName = e.target.dataset.tab;
-                
                 document.querySelectorAll('.tab-button-task').forEach(btn => btn.classList.remove('active'));
                 e.target.classList.add('active');
-                
                 document.querySelectorAll('.tab-content-task').forEach(tab => tab.classList.remove('active'));
                 const activeTab = document.getElementById(tabName);
                 if (activeTab) {
@@ -294,15 +274,12 @@ BX24.ready(function() {
             }
         });
 
-        
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('tab-button-task-existing')) {
                 e.preventDefault();
                 const tabName = e.target.dataset.tab;
-                
                 document.querySelectorAll('.tab-button-task-existing').forEach(btn => btn.classList.remove('active'));
                 e.target.classList.add('active');
-                
                 document.querySelectorAll('.tab-content-task-existing').forEach(tab => tab.classList.remove('active'));
                 const activeTab = document.getElementById(tabName);
                 if (activeTab) {
@@ -311,15 +288,12 @@ BX24.ready(function() {
             }
         });
 
-        
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('tab-button-task-members')) {
                 e.preventDefault();
                 const tabName = e.target.dataset.tab;
-                
                 document.querySelectorAll('.tab-button-task-members').forEach(btn => btn.classList.remove('active'));
                 e.target.classList.add('active');
-                
                 document.querySelectorAll('.tab-content-task-members').forEach(tab => tab.classList.remove('active'));
                 const activeTab = document.getElementById(tabName);
                 if (activeTab) {
@@ -329,15 +303,12 @@ BX24.ready(function() {
         });
     }
 
-    
     document.addEventListener('DOMContentLoaded', function() {
         initTabHandlers();
         initProjectUserSelectors();
         initTaskUserSelectors();
     });
 
-    
-    
     initTabHandlers();
     initProjectUserSelectors();
     initTaskUserSelectors();
