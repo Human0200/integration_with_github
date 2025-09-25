@@ -130,7 +130,7 @@ function isAlreadyCollaborator($apiKey, $owner, $repo, $username) {
     $userEnc  = rawurlencode($username);
     $url = "https://api.github.com/repos/{$ownerEnc}/{$repoEnc}/collaborators/{$userEnc}";
     list($code, $body,) = ghGet($apiKey, $url);
-    file_put_contents(__DIR__ . '/isAlreadyCollaborator_debug.txt', date('Y-m-d H:i:s') . ' ' . json_encode(['url'=>$url,'code'=>$code,'body'=>$body]) . PHP_EOL, FILE_APPEND);
+    //file_put_contents(__DIR__ . '/isAlreadyCollaborator_debug.txt', date('Y-m-d H:i:s') . ' ' . json_encode(['url'=>$url,'code'=>$code,'body'=>$body]) . PHP_EOL, FILE_APPEND);
     return $code === 204 || $code === 200; // 204 - есть доступ, 200 - есть доступ с деталями
 }
 
@@ -145,7 +145,7 @@ function checkUserPermission($apiKey, $owner, $repo, $username, $requiredPermiss
     // Используем endpoint который возвращает реальные права
     $url = "https://api.github.com/repos/{$ownerEnc}/{$repoEnc}/collaborators/{$userEnc}/permission";
     list($code, $body,) = ghGet($apiKey, $url);
-    file_put_contents(__DIR__ . '/checkUserPermission_debug.txt', date('Y-m-d H:i:s') . ' ' . json_encode(['url'=>$url,'code'=>$code,'body'=>$body]) . PHP_EOL, FILE_APPEND);
+   // file_put_contents(__DIR__ . '/checkUserPermission_debug.txt', date('Y-m-d H:i:s') . ' ' . json_encode(['url'=>$url,'code'=>$code,'body'=>$body]) . PHP_EOL, FILE_APPEND);
     if ($code === 200) {
         $data = json_decode($body, true);
         $userPermission = $data['permission'] ?? 'none';
@@ -222,7 +222,7 @@ function addCollaborator($apiKey, $owner, $repoName, $username, $permission = 'p
 
     list($httpCode, $response, $error) = ghPutJson($apiKey, $url, $payload);
     $res = json_decode($response, true);
-    file_put_contents(__DIR__ . '/addCollaborator_debug.txt', date('Y-m-d H:i:s') . ' ' . json_encode(['url'=>$url,'payload'=>$payload,'code'=>$httpCode,'response'=>$response,'error'=>$error]) . PHP_EOL, FILE_APPEND);
+    //file_put_contents(__DIR__ . '/addCollaborator_debug.txt', date('Y-m-d H:i:s') . ' ' . json_encode(['url'=>$url,'payload'=>$payload,'code'=>$httpCode,'response'=>$response,'error'=>$error]) . PHP_EOL, FILE_APPEND);
     $dbg = $debug ? [
         'request_url' => $url,
         'owner'       => $owner,

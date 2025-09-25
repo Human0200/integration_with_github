@@ -73,7 +73,8 @@ BX24.ready(function () {
         setupProjectEvents();
     }
 function loadProjectRepo() {
-    const optionKey = `github_project_${contextId}`;
+    const portalDomain = BX24.getDomain().split('.').join('_');
+    const optionKey = `${portalDomain}_github_project_${contextId}`;
     getAppOptions(function(result) {
         if (result.error()) return;
         const options = result.data();
@@ -340,7 +341,8 @@ function loadProjectRepo() {
         loadProjectRepo();
     }
     function saveProjectRepo(data, callback) {
-        const optionKey = `github_project_${contextId}`;
+        const portalDomain = BX24.getDomain().split('.').join('_');
+        const optionKey = `${portalDomain}_github_project_${contextId}`;
         const options = {};
 
         if (!data.repo_name && data.repo_url) {
@@ -365,8 +367,8 @@ function loadProjectRepo() {
             return;
         }
         const members = membersText.value.split(',').map(s => s.trim()).filter(s => s);
-
-        const optionKey = `github_project_${contextId}`;
+        const portalDomain = BX24.getDomain().split('.').join('_');
+        const optionKey = `${portalDomain}_github_project_${contextId}`;
         getAppOptions(function(result) {
             if (result.error()) {
                 showResult('Ошибка получения данных проекта: ' + result.error(), 'error');
@@ -484,8 +486,8 @@ function loadProjectRepo() {
             const groupId = task.groupId;
             const hasGroup = !!groupId;
 
-
-            const taskOptionKey = `github_task_${contextId}`;
+           const portalDomain = BX24.getDomain().split('.').join('_');
+            const taskOptionKey = `${portalDomain}_github_task_${contextId}`;
             getAppOptions(function(optionResult) {
                 if (optionResult.error()) {
                     showTaskSetupInterface(null, hasGroup);
@@ -498,7 +500,7 @@ function loadProjectRepo() {
                     showTaskRepoInterface(taskData);
                 } else if (groupId) {
 
-                    const projectOptionKey = `github_project_${groupId}`;
+                    const projectOptionKey = `${portalDomain}_github_project_${groupId}`;
                     const projectData = options[projectOptionKey] ? JSON.parse(options[projectOptionKey]) : null;
                     if (projectData && projectData.repo_url) {
 
@@ -756,8 +758,8 @@ function loadProjectRepo() {
                 return;
             }
 
-
-            const projectOptionKey = `github_project_${groupId}`;
+            const portalDomain = BX24.getDomain().split('.').join('_');
+            const projectOptionKey = `${portalDomain}_github_project_${groupId}`;
             getAppOptions(function(optionResult) {
                 if (optionResult.error()) {
                     showResult('Ошибка получения данных проекта', 'error');
@@ -936,7 +938,8 @@ function loadProjectRepo() {
         });
     }
     function saveTaskRepo(taskData, callback) {
-        const taskOptionKey = `github_task_${contextId}`;
+        const portalDomain = BX24.getDomain().split('.').join('_');
+        const taskOptionKey = `${portalDomain}_github_task_${contextId}`;
         const options = {};
         options[taskOptionKey] = JSON.stringify(taskData);
         setAppOptions({ options: options }).then(res => {
@@ -951,7 +954,7 @@ function loadProjectRepo() {
                 if (callback) callback(false);
                 return;
             }
-            console.log('Task repo data for adding members:', result.data(), taskData, members);
+            //console.log('Task repo data for adding members:', result.data(), taskData, members);
             const options = result.data();
             const apiKey = options.github_api_key;
             const organization = options.github_organization;
@@ -1003,8 +1006,8 @@ function loadProjectRepo() {
             return;
         }
         showResult('Обновление участников...', 'info');
-
-        const taskOptionKey = `github_task_${contextId}`;
+        const portalDomain = BX24.getDomain().split('.').join('_');
+        const taskOptionKey = `${portalDomain}_github_task_${contextId}`;
         getAppOptions(function(result) {
             if (result.error()) {
                 showResult('Ошибка получения данных: ' + result.error(), 'error');
@@ -1073,7 +1076,8 @@ function loadProjectRepo() {
         const taskBranch = document.getElementById('task_branch');
         if (!taskBranch) return;
         const branch = taskBranch.value;
-        const taskOptionKey = `github_task_${contextId}`;
+        const portalDomain = BX24.getDomain().split('.').join('_');
+        const taskOptionKey = `${portalDomain}_github_task_${contextId}`;
         getAppOptions(function(result) {
             if (result.error()) {
                 showResult('Ошибка получения данных: ' + result.error(), 'error');
@@ -1111,8 +1115,8 @@ function loadProjectRepo() {
             return;
         }
         const branch = branchName.value.trim();
-
-        const taskOptionKey = `github_task_${contextId}`;
+        const portalDomain = BX24.getDomain().split('.').join('_');
+        const taskOptionKey = `${portalDomain}_github_task_${contextId}`;
         getAppOptions(function(result) {
             if (result.error()) {
                 showResult('Ошибка получения данных: ' + result.error(), 'error');
