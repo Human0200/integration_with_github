@@ -2,7 +2,7 @@
 // saveOptions.php
 header('Content-Type: application/json; charset=utf-8');
 
-require_once __DIR__ . '/crest.php';   // crest.php + твой defines.php
+require_once __DIR__ . '/crest.php';
 
 try {
     $raw = file_get_contents('php://input');
@@ -14,15 +14,16 @@ try {
         throw new Exception('Invalid JSON');
     }
 
-    // ждем { "options": { ... } } — как у тебя в setAppOptions(...)
+    // Получаем настройки из запроса
     $options = $data['options'] ?? null;
     if (!$options || !is_array($options)) {
         throw new Exception('No options provided');
     }
 
-    $res = CRest::call('app.option.set', [
-        'options' => $options
-    ]);
+    // ПРАВИЛЬНЫЙ ВЫЗОВ: передаем настройки напрямую
+    $res = CRest::call('app.option.set', $options);
+    $res2 = Crest::call('app.option.get', []);
+    file_put_contents(__DIR__ . '/saveOptions_debug.txt', date('Y-m-d H:i:s') . ' ' . json_encode([ 'response_get' => $res2]) . PHP_EOL, FILE_APPEND);
 
     if (isset($res['error'])) {
         echo json_encode([

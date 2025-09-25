@@ -61,13 +61,8 @@ BX24.ready(function () {
             github_organization: elements['global_organization'].value,
             github_default_members: elements['global_members'].value
         };
-        setAppOptions({ options: options }).then(res => {
-            if (res.success) {
-                showResult('Настройки сохранены', 'success');
-            } else {
-                showResult('Ошибка сохранения: ' + (res.message || 'Неизвестная ошибка'), 'error');
-            }
-        });
+        BX24.callMethod('app.option.set', { options: options });
+        showResult('Настройки сохранены', 'success');
     }
 
     function showProjectInterface() {
@@ -77,21 +72,19 @@ BX24.ready(function () {
         loadProjectRepo();
         setupProjectEvents();
     }
-    function loadProjectRepo() {
-        const optionKey = `github_project_${contextId}`;
-        BX24.callMethod('app.option.get', {}, function (result) {
-            if (result.error()) return;
-            const options = result.data();
-            const projectData = options[optionKey] ? JSON.parse(options[optionKey]) : null;
-            if (projectData && projectData.repo_url) {
-
-                showCurrentRepository(projectData);
-            } else {
-
-                showRepoSelector();
-            }
-        });
-    }
+function loadProjectRepo() {
+    const optionKey = `github_project_${contextId}`;
+    getAppOptions(function(result) {
+        if (result.error()) return;
+        const options = result.data();
+        const projectData = options[optionKey] ? JSON.parse(options[optionKey]) : null;
+        if (projectData && projectData.repo_url) {
+            showCurrentRepository(projectData);
+        } else {
+            showRepoSelector();
+        }
+    });
+}
     function showCurrentRepository(projectData) {
         const currentRepo = document.getElementById('currentRepo');
         const repoSelector = document.getElementById('repoSelector');
@@ -311,6 +304,20 @@ BX24.ready(function () {
                 });
         });
     }
+    function getAppOptions(callback) {
+    fetch('getOptions.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                callback({ error: () => false, data: () => data.result });
+            } else {
+                callback({ error: () => data.message, data: () => null });
+            }
+        })
+        .catch(error => {
+            callback({ error: () => error.message, data: () => null });
+        });
+}
     function selectRepository() {
         const repoUrl = document.getElementById('existing_repo_url');
         if (!repoUrl) {
@@ -360,7 +367,7 @@ BX24.ready(function () {
         const members = membersText.value.split(',').map(s => s.trim()).filter(s => s);
 
         const optionKey = `github_project_${contextId}`;
-        BX24.callMethod('app.option.get', {}, function (result) {
+        getAppOptions(function(result) {
             if (result.error()) {
                 showResult('Ошибка получения данных проекта: ' + result.error(), 'error');
                 return;
@@ -478,7 +485,7 @@ BX24.ready(function () {
 
 
             const taskOptionKey = `github_task_${contextId}`;
-            BX24.callMethod('app.option.get', {}, function (optionResult) {
+            getAppOptions(function(optionResult) {
                 if (optionResult.error()) {
                     showTaskSetupInterface(null, hasGroup);
                     return;
@@ -750,7 +757,7 @@ BX24.ready(function () {
 
 
             const projectOptionKey = `github_project_${groupId}`;
-            BX24.callMethod('app.option.get', {}, function (optionResult) {
+            getAppOptions(function(optionResult) {
                 if (optionResult.error()) {
                     showResult('Ошибка получения данных проекта', 'error');
                     return;
@@ -937,7 +944,7 @@ BX24.ready(function () {
     }
     function addMembersToTaskRepo(taskData, members, callback) {
 
-        BX24.callMethod('app.option.get', {}, function (result) {
+       BX24.callMethod('app.option.get', {}, function (result) {
             if (result.error()) {
                 showResult('Ошибка получения настроек: ' + result.error(), 'error');
                 if (callback) callback(false);
@@ -995,7 +1002,7 @@ BX24.ready(function () {
         showResult('Обновление участников...', 'info');
 
         const taskOptionKey = `github_task_${contextId}`;
-        BX24.callMethod('app.option.get', {}, function (result) {
+        getAppOptions(function(result) {
             if (result.error()) {
                 showResult('Ошибка получения данных: ' + result.error(), 'error');
                 return;
@@ -1064,7 +1071,7 @@ BX24.ready(function () {
         if (!taskBranch) return;
         const branch = taskBranch.value;
         const taskOptionKey = `github_task_${contextId}`;
-        BX24.callMethod('app.option.get', {}, function (result) {
+        getAppOptions(function(result) {
             if (result.error()) {
                 showResult('Ошибка получения данных: ' + result.error(), 'error');
                 return;
@@ -1103,7 +1110,7 @@ BX24.ready(function () {
         const branch = branchName.value.trim();
 
         const taskOptionKey = `github_task_${contextId}`;
-        BX24.callMethod('app.option.get', {}, function (result) {
+        getAppOptions(function(result) {
             if (result.error()) {
                 showResult('Ошибка получения данных: ' + result.error(), 'error');
                 return;
