@@ -23,7 +23,7 @@ try {
     // ПРАВИЛЬНЫЙ ВЫЗОВ: передаем настройки напрямую
     $res = CRest::call('app.option.set', $options);
     $res2 = Crest::call('app.option.get', []);
-    file_put_contents(__DIR__ . '/saveOptions_debug.txt', date('Y-m-d H:i:s') . ' ' . json_encode([ 'response_get' => $res2]) . PHP_EOL, FILE_APPEND);
+    //file_put_contents(__DIR__ . '/saveOptions_debug.txt', date('Y-m-d H:i:s') . ' ' . json_encode([ 'response_get' => $res2]) . PHP_EOL, FILE_APPEND);
 
     if (isset($res['error'])) {
         echo json_encode([
