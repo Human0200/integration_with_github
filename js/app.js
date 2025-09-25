@@ -404,6 +404,7 @@ function loadProjectRepo() {
         console.log('Adding members to repo:', projectData.repo_name, 'Members:', members);
 
         BX24.callMethod('app.option.get', {}, function (result) {
+
             if (result.error()) {
                 showResult('Ошибка получения настроек: ' + result.error(), 'error');
                 callback(false);
@@ -950,6 +951,7 @@ function loadProjectRepo() {
                 if (callback) callback(false);
                 return;
             }
+            console.log('Task repo data for adding members:', result.data(), taskData, members);
             const options = result.data();
             const apiKey = options.github_api_key;
             const organization = options.github_organization;
@@ -975,6 +977,7 @@ function loadProjectRepo() {
                 })
                 .then(data => {
                     if (data.success) {
+                        console.log(data);
                         showResult('Участники успешно добавлены!', 'success');
                         if (callback) callback(true);
                     } else {

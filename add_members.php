@@ -6,7 +6,7 @@ $inputRaw = file_get_contents('php://input');
 $input = json_decode($inputRaw, true);
 
 // Debug flag
-$debug = isset($input['debug']) ? (bool)$input['debug'] : false;
+$debug = isset($input['debug']) ? (bool)$input['debug'] : false; //
 
 // ------------- Normalizers -------------
 function normalizeOwner($ownerRaw) {
@@ -130,9 +130,36 @@ function isAlreadyCollaborator($apiKey, $owner, $repo, $username) {
     $userEnc  = rawurlencode($username);
     $url = "https://api.github.com/repos/{$ownerEnc}/{$repoEnc}/collaborators/{$userEnc}";
     list($code, $body,) = ghGet($apiKey, $url);
-    return $code === 204;
+    file_put_contents(__DIR__ . '/isAlreadyCollaborator_debug.txt', date('Y-m-d H:i:s') . ' ' . json_encode(['url'=>$url,'code'=>$code,'body'=>$body]) . PHP_EOL, FILE_APPEND);
+    return $code === 204 || $code === 200; // 204 - есть доступ, 200 - есть доступ с деталями
 }
 
+/**
+ * Проверяем реальные права пользователя через API разрешений
+ */
+function checkUserPermission($apiKey, $owner, $repo, $username, $requiredPermission = 'push') {
+    $ownerEnc = rawurlencode($owner);
+    $repoEnc  = rawurlencode($repo);
+    $userEnc  = rawurlencode($username);
+    
+    // Используем endpoint который возвращает реальные права
+    $url = "https://api.github.com/repos/{$ownerEnc}/{$repoEnc}/collaborators/{$userEnc}/permission";
+    list($code, $body,) = ghGet($apiKey, $url);
+    file_put_contents(__DIR__ . '/checkUserPermission_debug.txt', date('Y-m-d H:i:s') . ' ' . json_encode(['url'=>$url,'code'=>$code,'body'=>$body]) . PHP_EOL, FILE_APPEND);
+    if ($code === 200) {
+        $data = json_decode($body, true);
+        $userPermission = $data['permission'] ?? 'none';
+        
+        // Простая проверка: если права недостаточны, возвращаем false
+        $permissionLevels = ['pull' => 1, 'triage' => 2, 'push' => 3, 'maintain' => 4, 'admin' => 5];
+        $userLevel = $permissionLevels[$userPermission] ?? 0;
+        $requiredLevel = $permissionLevels[$requiredPermission] ?? 0;
+        
+        return $userLevel >= $requiredLevel;
+    }
+    
+    return false; // Если не можем проверить, считаем что прав нет
+}
 /**
  * Try to detect pending invitation for username.
  * GET /repos/{owner}/{repo}/invitations (admin required) and match invitee.login
@@ -160,31 +187,23 @@ function hasPendingInvitation($apiKey, $owner, $repo, $username, $debug=false) {
 function addMembersToRepository($apiKey, $owner, $repoName, $members, $permission = 'push', $debug = false) {
     $results = [];
     $ok = 0;
-
+    
     foreach ($members as $m) {
         $username = trim((string)$m);
 
         if ($username === '') {
-            $row = ['user' => $m, 'success' => false, 'status'=>'empty', 'message' => 'Пустой логин'];
-            $results[] = $row;
-            continue;
-        }
-        if (!preg_match('~^[A-Za-z0-9-]+$~', $username)) {
-            $row = ['user' => $m, 'success' => false, 'status'=>'invalid', 'message' => 'Невалидный логин GitHub'];
-            $results[] = $row;
+            $results[] = ['user' => $m, 'success' => false, 'status'=>'empty', 'message' => 'Пустой логин'];
             continue;
         }
 
-        // 1) Pre-check collaborator
-        if (isAlreadyCollaborator($apiKey, $owner, $repoName, $username)) {
-            $row = ['user'=>$username, 'success'=>true, 'status'=>'already', 'message'=>"$username уже имеет доступ"];
-            if ($debug) $row['debug'] = ['precheck'=>'collaborator=YES'];
-            $results[] = $row;
+        // Проверяем достаточно ли прав у пользователя
+        if (checkUserPermission($apiKey, $owner, $repoName, $username, $permission)) {
+            $results[] = ['user'=>$username, 'success'=>true, 'status'=>'already', 'message'=>"$username уже имеет доступ $permission"];
             $ok++;
             continue;
         }
 
-        // 2) PUT invite
+        // Если прав недостаточно - добавляем/обновляем
         $r = addCollaborator($apiKey, $owner, $repoName, $username, $permission, $debug);
         $r['user'] = $username;
         $results[] = $r;
@@ -203,7 +222,7 @@ function addCollaborator($apiKey, $owner, $repoName, $username, $permission = 'p
 
     list($httpCode, $response, $error) = ghPutJson($apiKey, $url, $payload);
     $res = json_decode($response, true);
-
+    file_put_contents(__DIR__ . '/addCollaborator_debug.txt', date('Y-m-d H:i:s') . ' ' . json_encode(['url'=>$url,'payload'=>$payload,'code'=>$httpCode,'response'=>$response,'error'=>$error]) . PHP_EOL, FILE_APPEND);
     $dbg = $debug ? [
         'request_url' => $url,
         'owner'       => $owner,
