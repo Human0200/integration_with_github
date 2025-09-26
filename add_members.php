@@ -27,20 +27,19 @@ function normalizeOwner($ownerRaw) {
 function normalizeRepo($repoRaw) {
     $s = trim((string)$repoRaw);
     if ($s === '') return $s;
-    // if full HTTPS URL: https://github.com/owner/repo(.git)?
+
+    // if full HTTPS URL: https://github.com/owner/repo (.git)?
     if (preg_match('~https?://github\.com/[^/]+/([^/?#]+)~i', $s, $m)) {
         $s = $m[1];
     }
     // if SSH URL: git@github.com:owner/repo(.git)?
-    if (preg_match('~git@github\.com:[^/]+/([^/]+)~i', $s, $m)) {
+    elseif (preg_match('~git@github\.com:[^/]+/([^/]+)~i', $s, $m)) {
         $s = $m[1];
     }
-    // if provided as owner/repo -> take last segment
-    if (strpos($s, '/') !== false) {
-        $parts = explode('/', $s);
-        $s = end($parts);
-    }
-    // strip trailing slashes
+    // Remove the last slash and concatenate parts
+    $s = str_replace('/', '', $s);
+
+    // strip trailing slashes (just in case)
     $s = rtrim($s, '/');
     // strip .git suffix (case-insensitive)
     $s = preg_replace('~\.git$~i', '', $s);
@@ -222,7 +221,7 @@ function addCollaborator($apiKey, $owner, $repoName, $username, $permission = 'p
 
     list($httpCode, $response, $error) = ghPutJson($apiKey, $url, $payload);
     $res = json_decode($response, true);
-    //file_put_contents(__DIR__ . '/addCollaborator_debug.txt', date('Y-m-d H:i:s') . ' ' . json_encode(['url'=>$url,'payload'=>$payload,'code'=>$httpCode,'response'=>$response,'error'=>$error]) . PHP_EOL, FILE_APPEND);
+    file_put_contents(__DIR__ . '/addCollaborator_debug.txt', date('Y-m-d H:i:s') . ' ' . json_encode(['url'=>$url,'payload'=>$payload,'code'=>$httpCode,'response'=>$response,'error'=>$error]) . PHP_EOL, FILE_APPEND);
     $dbg = $debug ? [
         'request_url' => $url,
         'owner'       => $owner,

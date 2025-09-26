@@ -964,7 +964,7 @@ function loadProjectRepo() {
                 return;
             }
             showResult('Отправка запроса на добавление участников...', 'info');
-
+            console.log('Adding members to task repo:', taskData.repo_name, 'Members:', members);
             fetch('add_members.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1036,6 +1036,7 @@ function loadProjectRepo() {
                     });
                 } else {
                     showResult('Ошибка добавления участников в GitHub', 'error');
+                    console.log(success);
                 }
             });
         });
